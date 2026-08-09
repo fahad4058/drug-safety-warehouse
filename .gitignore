@@ -1,11 +1,19 @@
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-dist/
-wheels/
-internal/
-*.egg-info
+# dbt artifacts
+target/
+dbt_packages/
+logs/
+.user.yml
 
-# Virtual environments
-.venv
+# secrets & local env
+.env
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+
+# internal
+internal/
