@@ -1,0 +1,4 @@
+[sqlfluff]
+dialect = databricks
+templater = jinja
+max_line_length = 120

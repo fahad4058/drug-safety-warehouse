@@ -1,0 +1,8 @@
+repos:
+  - repo: local
+    hooks:
+      - id: sqlfluff-lint
+        name: sqlfluff lint
+        entry: uv run sqlfluff lint
+        language: system
+        files: ^(models|macros|snapshots|analyses|tests)/.*\.sql$
