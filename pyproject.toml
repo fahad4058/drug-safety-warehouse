@@ -1,13 +1,21 @@
 [project]
 name = "drug-safety-warehouse"
 version = "0.1.0"
-description = "Add your description here"
+description = "Analytics-engineering warehouse on adverse-effects drugs, clinical trials and openFDA data. built on dbt framework, databricks, and airflow orchestration"
 readme = "README.md"
-requires-python = ">=3.13"
-dependencies = []
+requires-python = ">=3.12"
+dependencies = [
+    "dbt-core~=1.11.0",
+    "dbt-databricks~=1.11.0",
+    "httpx>=0.28.1",
+    "python-dotenv>=1.2.2",
+]
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.6.1",
     "pytest>=9.1.1",
     "ruff>=0.16.2",
+    "sqlfluff>=4.3.0",
+    "sqlfluff-templater-dbt>=4.3.0",
 ]
