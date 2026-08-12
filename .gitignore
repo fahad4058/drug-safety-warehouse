@@ -17,3 +17,6 @@ __pycache__/
 
 # internal
 internal/
+
+# data
+data/

@@ -6,3 +6,10 @@ repos:
         entry: uv run sqlfluff lint
         language: system
         files: ^(models|macros|snapshots|analyses|tests)/.*\.sql$
+
+      - id: no-commit-to-main
+        name: block commits on main
+        entry: bash -c '[ "$(git symbolic-ref --short HEAD)" != "main" ]'
+        language: system
+        always_run: true
+        pass_filenames: false
