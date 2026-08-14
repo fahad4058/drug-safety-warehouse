@@ -9,6 +9,7 @@ dependencies = [
     "dbt-databricks~=1.11.0",
     "httpx>=0.28.1",
     "ijson>=3.5.1",
+    "pyarrow>=25.0.0",
     "python-dotenv>=1.2.2",
 ]
 

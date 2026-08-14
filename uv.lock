@@ -589,6 +589,7 @@ dependencies = [
     { name = "dbt-databricks" },
     { name = "httpx" },
     { name = "ijson" },
+    { name = "pyarrow" },
     { name = "python-dotenv" },
 ]
 
@@ -607,6 +608,7 @@ requires-dist = [
     { name = "dbt-databricks", specifier = "~=1.11.0" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "ijson", specifier = ">=3.5.1" },
+    { name = "pyarrow", specifier = ">=25.0.0" },
     { name = "python-dotenv", specifier = ">=1.2.2" },
 ]
 
