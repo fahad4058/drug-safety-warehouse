@@ -12,17 +12,15 @@ reaction[]); unwrapping that is Step 4's work, in tested SQL.
 
 import argparse
 import collections
-import gzip
-import json
 import re
 import sys
 import time
 import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
+from _bulk import download, stream_zip_to_ndjson
 
 import httpx
-import ijson
 
 INDEX_URL = "https://api.fda.gov/download.json"
 QUARTER_RE = re.compile(r"/drug/event/(\d{4})q(\d)/")
@@ -62,42 +60,7 @@ def group_by_quarter(partitions: list[dict]) -> dict[tuple[int, int], list[dict]
     return grouped
 
 
-def download(client: httpx.Client, url: str, dest: Path) -> None:
-    """Stream a part-file to disk, retrying transient failures, rename on success."""
-    tmp = dest.with_name(dest.name + ".partial")
-    delay = 2.0
-    for attempt in range(1, MAX_RETRIES + 1):
-        with client.stream("GET", url) as resp:
-            if resp.status_code not in RETRYABLE:
-                resp.raise_for_status()
-                with tmp.open("wb") as fh:
-                    for chunk in resp.iter_bytes(1 << 20):
-                        fh.write(chunk)
-                tmp.rename(dest)
-                return
-            print(f"  HTTP {resp.status_code}; waiting {delay:.0f}s "
-                  f"(attempt {attempt}/{MAX_RETRIES})", file=sys.stderr)
-        time.sleep(delay)
-        delay = min(delay * 2, 60)
-    raise RuntimeError(f"gave up downloading {url}")
 
-
-def stream_part(zip_path: Path, out_path: Path, pulled_at: str) -> int:
-    """Zip -> NDJSON.gz, one report per line, in constant memory."""
-    tmp = out_path.with_name(out_path.name + ".partial")
-    n = 0
-    with zipfile.ZipFile(zip_path) as zf:
-        members = [m for m in zf.namelist() if m.endswith(".json")]
-        if len(members) != 1:
-            raise RuntimeError(f"{zip_path.name}: expected one .json member, got {members}")
-        with zf.open(members[0]) as src, gzip.open(tmp, "wt", encoding="utf-8") as out:
-            # use_float: ijson yields Decimal otherwise, which json.dumps rejects.
-            for report in ijson.items(src, "results.item", use_float=True):
-                report["_pulled_at"] = pulled_at
-                out.write(json.dumps(report, separators=(",", ":")) + "\n")
-                n += 1
-    tmp.rename(out_path)
-    return n
 
 
 def main() -> None:
@@ -146,7 +109,7 @@ def main() -> None:
                 continue
             print(f"  downloading {p['file']}")
             download(client, p["file"], zip_path)
-            n = stream_part(zip_path, out_path, pulled_at)
+            n = stream_zip_to_ndjson(zip_path, out_path, pulled_at)
             if not args.keep_zip:
                 zip_path.unlink()
             flag = "" if n == p["records"] else "  <-- MISMATCH"
