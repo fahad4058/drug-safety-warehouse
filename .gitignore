@@ -20,3 +20,5 @@ internal/
 
 # data
 data/
+query_output/
+.vscode/
