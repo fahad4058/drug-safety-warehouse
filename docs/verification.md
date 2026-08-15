@@ -18,12 +18,12 @@ Workspace: `dbc-8f5f7a25-af7b.cloud.databricks.com` (AWS) · Warehouse: 2X-Small
 |---|-------|--------|-------------|
 | 1 | PAT auth: Databricks CLI (`current-user me`) | PASS 2026-08-09 | CLI/ingestion path confirmed |
 | 2 | PAT auth: `dbt debug` × dev/prod/ci | PASS 2026-08-09 | all three targets connect; env-var-based profile works |
-| 3 | Recursive CTE on serverless warehouse | PASS 2026-08-09 | Step 6 hierarchy shootout safe (returned rows 1–5) |
-| 4 | CREATE MATERIALIZED VIEW + query + drop | PASS 2026-08-09 | Step 8 MV model proceeds; MV occupies the single pipeline slot |
-| 5 | GRANT SELECT to `account users` + SHOW GRANTS | PASS 2026-08-09 | built-in group is grantable; Step 8 grants exercise as planned |
+| 3 | Recursive CTE on serverless warehouse | PASS 2026-08-09 | hierarchy shootout safe (returned rows 1–5) |
+| 4 | CREATE MATERIALIZED VIEW + query + drop | PASS 2026-08-09 | MV model proceeds; MV occupies the single pipeline slot |
+| 5 | GRANT SELECT to `account users` + SHOW GRANTS | PASS 2026-08-09 | built-in group is grantable;  grants exercise as planned |
 | 6 | Volume upload via CLI + COPY INTO (double-run) | PASS 2026-08-10 | ingestion path confirmed; 2nd run loaded 0 rows — idempotency proven |
-| 7 | dbt Python model on serverless job compute | PASS 2026-08-10 | job submitted + table created in 56s (`submission_method: serverless_cluster`); Step 8 Python model proceeds |
-| 8 | insert_overwrite on serverless SQL warehouse | PASS 2026-08-10 | works, DBR 17.1+ gated; partition-scoped replacement verified by marker-row test; Step 5 benchmark variant proceeds |
+| 7 | dbt Python model on serverless job compute | PASS 2026-08-10 | job submitted + table created in 56s (`submission_method: serverless_cluster`);  Python model proceeds |
+| 8 | insert_overwrite on serverless SQL warehouse | PASS 2026-08-10 | works, DBR 17.1+ gated; partition-scoped replacement verified by marker-row test; benchmark variant proceeds |
 | 9 | liquid_clustered_by + OPTIMIZE + exclusivity errors | PASS 2026-08-10 | CLUSTER BY + OPTIMIZE work; layouts confirmed mutually exclusive |
 
 ## Findings
@@ -47,7 +47,7 @@ Workspace: `dbc-8f5f7a25-af7b.cloud.databricks.com` (AWS) · Warehouse: 2X-Small
   `DELTA_CLUSTERING_WITH_ZORDER_BY`.
 - **`OPTIMIZE` on a clustered table runs two passes** — a clustering pass, then a
   `post-optimize-compaction` pass — and returns one metrics row per pass. At probe
-  scale (1 file, 1.4 KB) all counters are zero; real measurements belong to Step 5.
+  scale (1 file, 1.4 KB) all counters are zero; real measurements belong to.
 - **`DESCRIBE DETAIL` is the layout receipt**: `partitionColumns` vs
   `clusteringColumns`, plus `tableFeatures` (`clustering`, `deletionVectors`,
   `rowTracking` all on by default here; parquet compression is zstd).
@@ -63,4 +63,4 @@ Workspace: `dbc-8f5f7a25-af7b.cloud.databricks.com` (AWS) · Warehouse: 2X-Small
   deprecated custom config key — the opt-in became the default). `<=>` is
   null-safe equality, so NULL partition values still match. The adapter logs that
   on DBR < 17.1 this strategy silently degrades to full-table replacement — the
-  exact blast-radius trap Step 5 rebuilds deliberately at scale.
+  exact blast-radius trap rebuilds deliberately at scale.
