@@ -100,7 +100,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     default_since = (date.today() - timedelta(days=7)).isoformat()
     parser.add_argument("--since", default=default_since,
-                        help="LastUpdatePostDate window start, YYYY-MM-DD (default: 90 days ago)")
+                        help="LastUpdatePostDate window start, YYYY-MM-DD (default: 7 days ago)")
     parser.add_argument("--until", default="MAX",
                         help="window end, YYYY-MM-DD or MAX (default: MAX)")
     parser.add_argument("--out-dir", type=Path, default=Path("data/ctgov"))
