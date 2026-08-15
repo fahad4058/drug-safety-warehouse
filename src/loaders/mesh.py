@@ -3,7 +3,7 @@
 MeSH is the controlled vocabulary that gives free-text conditions a hierarchy.
 Each descriptor carries one or more tree numbers -- dotted paths like
 C04.588.945 -- and holding more than one means the concept sits in several
-branches at once. That is why Step 6's hierarchy is a DAG, not a tree.
+branches at once. That is why the hierarchy is a DAG, not a tree.
 
 Parsed with iterparse and cleared as it goes: the file is a few hundred MB and
 ElementTree.parse() would hold the whole document in memory.

@@ -7,7 +7,7 @@ document shaped {"meta": ..., "results": [...]}; we stream `results` out one
 report per line so COPY INTO maps one line to one row.
 
 No flattening here. FAERS nests three deep (report -> patient -> drug[] and
-reaction[]); unwrapping that is Step 4's work, in tested SQL.
+reaction[]); unwrapping that is staging's work, in tested SQL.
 """
 
 import argparse
