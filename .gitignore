@@ -22,3 +22,4 @@ internal/
 data/
 query_output/
 .vscode/
+dbt_internal_packages/
