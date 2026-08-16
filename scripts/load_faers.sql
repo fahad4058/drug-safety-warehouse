@@ -1,6 +1,6 @@
-CREATE TABLE IF NOT EXISTS raw.landing.faers_reports;
+CREATE TABLE IF NOT EXISTS raw.landing.faers_event_ingest_v2;
 
-COPY INTO raw.landing.faers_reports
+COPY INTO raw.landing.faers_event_ingest_v2
 FROM (
   SELECT
     *,

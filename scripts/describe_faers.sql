@@ -1,1 +1,1 @@
-DESCRIBE raw.landing.faers_reports;
+DESCRIBE raw.landing.faers_event_ingest_v2;
