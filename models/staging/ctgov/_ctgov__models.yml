@@ -1,0 +1,27 @@
+version: 2
+
+models:
+  - name: stg_ctgov__studies
+    description: >
+      One row per study, newest pull wins. Casts and renames only, plus the one
+      grain correction: the append-only landing log holds a row per study per
+      pull, and this resolves it to current state.
+    columns:
+      - name: nct_id
+        description: >
+          Registry id, the natural key. `unique` here is the assertion that the
+          QUALIFY worked — it is deliberately absent at source level, where the
+          append-only design makes duplicates correct.
+        data_tests:
+          - unique
+          - not_null
+      - name: expanded_access_ref_nct_id
+        description: >
+          Points at a separate expanded-access study, which the interventional
+          filter excludes from this cohort. Any join on it resolves to nothing.
+      - name: start_date_precision
+        description: >
+          'day', 'month' (source gave YYYY-MM, normalised to the 1st), or null.
+          ~39% of rows are month precision.
+      - name: _pulled_at
+        description: Pull timestamp, cast from string. The dedup ordering key.

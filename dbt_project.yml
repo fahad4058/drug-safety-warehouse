@@ -11,3 +11,9 @@ macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
 clean-targets: ["target", "dbt_packages"]
+
+models:
+    drug_safety_warehouse:
+        staging:
+            +materialized: view
+

@@ -2,3 +2,14 @@
 dialect = databricks
 templater = jinja
 max_line_length = 120
+
+# CP02: source fields are camelCase (protocolSection.identificationModule.nctId), our
+# aliases are snake_case. No capitalisation policy covers both, and the camelCase only
+# ever appears left of `as` — the boundary staging exists to cross.
+# ST06: would force every date cast to the bottom of the select, splitting start_date
+# from start_date_type / start_date_precision.
+# RF03: parses Databricks struct paths (primarysource.reportercountry) as
+# table.column, then demands the bare columns beside them be "consistent" with
+# that. Cannot be satisfied by correct struct-heavy staging SQL. RF02 still
+# enforces qualification in multi-table selects, which is the case that matters.
+exclude_rules = CP02, ST06, RF03

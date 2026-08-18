@@ -1,0 +1,43 @@
+version: 2
+
+models:
+  - name: stg_faers__reports
+    description: >
+      One row per FAERS case report, latest version wins. The quarterly extracts
+      already hold exactly one row per safetyreportid, so the dedup is a measured
+      no-op on the current data — it earns its place when a republished quarter
+      lands a revised case at a higher version.
+    columns:
+      - name: safety_report_id
+        description: Natural key. One row per case report after the version dedup.
+        data_tests:
+          - unique
+          - not_null
+      - name: safety_report_version
+        description: >
+          Cast to int in the CTE and ordered on the cast column, so the lexical
+          sort that ranks '9' above '103' is structurally impossible here.
+          Max observed 103.
+        data_tests:
+          - not_null
+      - name: receipt_date
+        description: >
+          Parsed from E2B format code 102 (CCYYMMDD). not_null is the guard: a
+          future load in another format code parses to null and fails this test.
+        data_tests:
+          - not_null
+      - name: receive_date
+        data_tests:
+          - not_null
+      - name: transmission_date
+        data_tests:
+          - not_null
+      - name: duplicate
+        description: >
+          FDA flag marking this case a duplicate of a different safetyreportid.
+          Non-null on 28,780 of 144,000 rows (20%). Carried through unfiltered —
+          the version dedup cannot catch these, and excluding them is mart logic.
+      - name: drugs
+        description: >
+          patient.drug, untouched. Holds medicinalproduct and openfda, the two
+          fields DESCRIBE truncates and the drugsfda join depends on.
