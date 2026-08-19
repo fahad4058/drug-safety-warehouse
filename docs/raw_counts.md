@@ -84,7 +84,7 @@ Three metadata columns are stamped on every row:
 
 `_batch_id` uses `date_format` rather than `uuid()` deliberately: `uuid()` is
 evaluated **per row** and would give every row its own "batch", while
-`current_timestamp()` is constant for the query. Hard-delete snapshot
+`current_timestamp()` is constant for the query. The hard-delete snapshot
 depends on being able to ask what the newest bulk file contained, which an
 append-only log cannot answer without this column.
 

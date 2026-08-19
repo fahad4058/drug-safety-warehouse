@@ -8,7 +8,7 @@ sources:
     database: raw
     schema: landing
     # skip freshness warn and errors for mesh, fresh once a year
-    # config: {freshness: null}
+    config: {freshness: null}
     tables:
       - name: descriptors
         identifier: mesh_descriptors
