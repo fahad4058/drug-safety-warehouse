@@ -8,11 +8,7 @@ sources:
     database: raw
     schema: landing
     # skip freshness warn and errors for mesh, fresh once a year
-    # config:
-    #   loaded_at_field: _loaded_at
-    #   freshness:
-    #      warn_after: {count:350, period: day}
-    #      error_after: {count:365, period: day }
+    # config: {freshness: null}
     tables:
       - name: descriptors
         identifier: mesh_descriptors

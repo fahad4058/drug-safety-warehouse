@@ -52,7 +52,7 @@ renamed as (
         patient.patientweight as patient_weight,
         patient.summary.narrativeincludeclinical as narrative_include_clinical,
 
-        -- arrays carried through untouched; step 4 explodes them. `drugs` still
+        -- arrays carried through untouched; the intermediate layer explodes them. `drugs` still
         -- holds medicinalproduct and openfda -- the two fields DESCRIBE truncates
         -- away, and the ones the drugsfda join depends on.
         patient.drug as drugs,

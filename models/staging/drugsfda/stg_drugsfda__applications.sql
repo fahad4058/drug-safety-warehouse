@@ -7,8 +7,8 @@ with source as (
 -- the newest bulk file only. drugsfda re-lands the WHOLE catalog every pull, so
 -- the latest batch is a faithful mirror of it and an application missing from
 -- that batch has been withdrawn. latest-row-per-key across all batches (the
--- ctgov pattern) would keep withdrawn applications forever,
--- hard_deletes could never fire. ctgov must NOT be scoped this way: its loader
+-- ctgov pattern) would keep forever, and the snapshot's / hard_deletes could never fire.
+-- ctgov must NOT be scoped this way: its loader
 -- pulls only changed studies, so its newest batch is a delta, not a mirror.
 latest_batch as (
 
@@ -27,7 +27,7 @@ renamed as (
         regexp_extract(application_number, '^([A-Z]+)', 1) as application_type,
         sponsor_name,
 
-        -- arrays and structs carried through untouched; explodes them in int node.
+        -- arrays and structs carried through untouched; the intermediate layer explodes them.
         -- openfda is the harmonization bridge to the same block inside faers
         -- drug entries.
         products,

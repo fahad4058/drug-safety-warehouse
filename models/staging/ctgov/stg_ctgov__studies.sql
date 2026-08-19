@@ -32,7 +32,7 @@ renamed as (
         protocolSection.designModule.designInfo.primaryPurpose as primary_purpose,
         protocolSection.designModule.designInfo.maskingInfo.masking,
 
-        -- arrays carried through untouched; step 4 explodes them
+        -- arrays carried through untouched; the intermediate layer explodes them
         protocolSection.conditionsModule.conditions,
         protocolSection.conditionsModule.keywords,
         protocolSection.armsInterventionsModule.armGroups as arm_groups,

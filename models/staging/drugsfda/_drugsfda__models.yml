@@ -22,7 +22,7 @@ models:
       - name: products
         description: >
           One application holds many products, each holding many active
-          ingredients. Untouched here; ingredient-level explode is step 4 work,
+          ingredients. Untouched here; ingredient-level explode is intermediate-layer work,
           and the join grain is a real decision.
       - name: _batch_id
         description: >
