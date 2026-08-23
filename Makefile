@@ -16,17 +16,24 @@ PY     := uv run python
 
 load-all: load-ctgov load-faers load-drugsfda load-mesh
 
-load-ctgov:
+# macOS drops a .DS_Store into any directory Finder has opened, and `fs cp -r`
+# copies the directory wholesale -- so the junk file lands in a public Volume.
+# COPY INTO ignores it (PATTERN = '*.ndjson.gz'), but a landing zone should hold
+# only landing artifacts. load-mesh needs no guard: it copies a single named file.
+clean-junk:
+	find data -name .DS_Store -delete
+
+load-ctgov: clean-junk
 	$(PY) src/loaders/ctgov.py $(ARGS)
 	databricks fs cp -r --overwrite data/ctgov $(VOLUME)/ctgov
 	$(PY) scripts/run_sql.py scripts/load_ctgov.sql
 
-load-faers:
+load-faers: clean-junk
 	$(PY) src/loaders/faers.py $(ARGS)
 	databricks fs cp -r --overwrite data/faers $(VOLUME)/faers
 	$(PY) scripts/run_sql.py scripts/load_faers.sql
 
-load-drugsfda:
+load-drugsfda: clean-junk
 	$(PY) src/loaders/drugsfda.py $(ARGS)
 	databricks fs cp -r --overwrite data/drugsfda $(VOLUME)/drugsfda
 	$(PY) scripts/run_sql.py scripts/load_drugsfda.sql

@@ -1,0 +1,28 @@
+version: 2
+
+sources:
+  - name: mesh
+    description: >
+        MeSH 2026 descriptor vocabulary with tree numbers, parsed from desc2026.xml.
+        Annual static file.
+    database: raw
+    schema: landing
+    # skip freshness warn and errors for mesh, fresh once a year
+    config: {freshness: null}
+    tables:
+      - name: descriptors
+        identifier: mesh_descriptors
+        description: >
+            Natural key `descriptor_ui`. 53% of descriptors carry more than one tree
+            number and 2 carry none — the hierarchy is a DAG, not a tree.
+        columns:
+          - name: descriptor_ui
+            description: >
+              mesh dataset natural key; descriptor unique id
+            data_tests:
+              - not_null
+          - name: _loaded_at
+            description: >
+              warehouse arrival time, used for freshness measure
+            data_tests:
+              - not_null

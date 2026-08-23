@@ -11,3 +11,17 @@ macro-paths: ["macros"]
 snapshot-paths: ["snapshots"]
 
 clean-targets: ["target", "dbt_packages"]
+
+models:
+    drug_safety_warehouse:
+        staging:
+            +materialized: view
+
+seeds:
+    drug_safety_warehouse:
+        +quote_columns: false
+        faers_outcome_codes:
+            +column_types:
+                outcome_code: string
+                outcome_label: string
+

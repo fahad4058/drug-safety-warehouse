@@ -1,0 +1,36 @@
+version: 2
+
+sources:
+  - name: ctgov
+    description: >
+        ClinicalTrials.gov API v2 studies — interventional oncology, phase 2/3,
+        windowed on LastUpdatePostDate. Append-only: one row per study per pull.
+    database: raw
+    schema: landing
+    config:
+      loaded_at_field: _loaded_at
+      freshness:
+        warn_after: {count: 26, period: hour}
+        error_after: {count: 50, period: hour}
+    tables:
+      - name: studies
+        identifier: ctgov_studies
+        description: >
+            Natural key `protocolSection.identificationModule.nctId`. Holds
+            deliberate duplicates across pulls, resolved by `_pulled_at` downstream.
+        # freshness per table, overrides source
+        config:
+          freshness:
+            warn_after: {count: 12, period: hour}
+            error_after: {count: 24, period: hour}
+        columns:
+          - name: protocolSection.identificationModule.nctId
+            description: >
+              Registry id, the natural key.
+            data_tests:
+              - not_null
+          - name: _loaded_at
+            description: >
+              warehouse arrival time, used for freshness checks, cant be null
+            data_tests:
+              - not_null

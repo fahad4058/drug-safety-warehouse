@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: stg_drugsfda__applications
+    description: >
+      One row per application, from the NEWEST batch only. drugsfda re-lands
+      the whole catalog on every pull, so the latest batch is a faithful mirror
+      of the current bulk file and a withdrawn application is absent from it —
+      the property hard_deletes depends on. Latest-row-per-key across
+      all batches would keep withdrawn applications forever. ctgov is scoped
+      the other way for the opposite reason: its loader pulls a delta.
+    columns:
+      - name: application_number
+        description: Natural key. NDA / ANDA / BLA prefix plus the number.
+        data_tests:
+          - unique
+          - not_null
+      - name: application_type
+        description: The prefix, parsed off application_number.
+        data_tests:
+          - not_null
+      - name: products
+        description: >
+          One application holds many products, each holding many active
+          ingredients. Untouched here; ingredient-level explode is intermediate-layer work,
+          and the join grain is a real decision.
+      - name: _batch_id
+        description: >
+          Constant across the view by construction — every row comes from
+          max(_batch_id). The scalar subquery is the deletion-visibility
+          mechanism.

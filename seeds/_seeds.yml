@@ -1,0 +1,17 @@
+version: 2
+
+seeds:
+    - name: faers_outcome_codes
+      description: >
+        E2B reaction-outcome codes for patient.reaction.reactionoutcome, mapped
+        to their labels. The source of truth is this file: openFDA publishes the
+        codes only as prose in a specification, so there is nothing to fetch and
+        nothing upstream to disagree with a wrong label.
+      columns:
+        - name: outcome_code
+          data_tests:
+            - not_null
+            - unique
+        - name: outcome_label
+          data_tests:
+            - not_null

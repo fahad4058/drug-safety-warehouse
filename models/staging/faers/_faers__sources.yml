@@ -1,0 +1,31 @@
+version: 2
+
+sources:
+  - name: faers
+    description: >
+        openFDA drug-event case reports, landed append-only from the quarterly
+        bulk part-files. One row per case report per pull.
+    database: raw
+    schema: landing
+    config:
+      loaded_at_field: _loaded_at
+      freshness:
+        warn_after: {count: 45, period: day}
+        error_after: {count: 120, period: day}
+    tables:
+      - name: events
+        identifier: faers_event_ingest_v2
+        description: >
+          Natural key `safetyreportid`. Note `safetyreportversion` is a STRING —
+          any latest-version resolution must cast it to int before ordering.
+        columns:
+          - name: safetyreportid
+            description: >
+              Natural key `safetyreportid`
+            data_tests:
+              - not_null
+          - name: _loaded_at
+            description: >
+              warehouse arrival time, for freshness measure
+            data_tests:
+              - not_null

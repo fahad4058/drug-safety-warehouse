@@ -1,0 +1,28 @@
+version: 2
+
+models:
+  - name: stg_mesh__descriptors
+    description: >
+      One row per MeSH descriptor, newest pull wins. tree_numbers stays an
+      array: staging corrects grain back to the source entity (the append-only
+      log holds one row per descriptor per annual file) but never fans out to a
+      new one — the (descriptor, tree number) grain is built downstream, where
+      the hierarchy is. 53% of descriptors carry more than one tree number
+      (max 24), so the hierarchy is a DAG; anything that explodes this array
+      fans out and must aggregate on descriptor_ui, not on rows.
+    columns:
+      - name: descriptor_ui
+        description: >
+          Natural key. unique here is the assertion that the QUALIFY worked —
+          a no-op on a single annual file, load-bearing once desc2027 lands.
+        data_tests:
+          - unique
+          - not_null
+      - name: descriptor_name
+        data_tests:
+          - not_null
+      - name: tree_numbers
+        description: >
+          Dotted materialized paths (C04.588.945.947.535.160); a parent is the
+          path minus its last segment. Two descriptors have an empty array —
+          any downstream explode must be explode_outer or they vanish.

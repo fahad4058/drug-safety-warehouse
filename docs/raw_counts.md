@@ -11,7 +11,7 @@ merged or deduplicated at load time.
 |---|---:|---:|---:|---:|
 | `raw.landing.ctgov_studies` | 54,394 | 49,045 | 2 | 1 |
 | `raw.landing.drugsfda_applications` | 29,267 | 29,267 | 1 | 1 |
-| `raw.landing.faers_reports` | 144,000 | 144,000 | 12 | 1 |
+| `raw.landing.faers_event_ingest_v2` | 144,000 | 144,000 | 12 | 1 |
 | `raw.landing.mesh_descriptors` | 31,110 | 31,110 | 1 | 1 |
 | **total** | **258,771** | | **16** | |
 
@@ -84,7 +84,7 @@ Three metadata columns are stamped on every row:
 
 `_batch_id` uses `date_format` rather than `uuid()` deliberately: `uuid()` is
 evaluated **per row** and would give every row its own "batch", while
-`current_timestamp()` is constant for the query. Hard-delete snapshot
+`current_timestamp()` is constant for the query. The hard-delete snapshot
 depends on being able to ask what the newest bulk file contained, which an
 append-only log cannot answer without this column.
 
