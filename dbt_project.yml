@@ -16,6 +16,10 @@ models:
     drug_safety_warehouse:
         staging:
             +materialized: view
+        intermediate:
+            +materialized: view
+        marts:
+            +materialized: table
 
 seeds:
     drug_safety_warehouse:

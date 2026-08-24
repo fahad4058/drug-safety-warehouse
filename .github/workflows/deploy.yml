@@ -1,0 +1,35 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: deploy to prod
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+      DBT_ENV_SECRET_DATABRICKS_TOKEN: ${{ secrets.DBT_ENV_SECRET_DATABRICKS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      - name: install from the lockfile
+        run: uv sync --locked
+
+      - name: dbt deps
+        run: uv run dbt deps
+
+      # the merge that lands this file is also the first commit this deploys
+      - name: dbt build to prod
+        run: uv run dbt build --target prod

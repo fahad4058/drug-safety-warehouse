@@ -1,0 +1,83 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: >
+        Calendar dimension, one row per day 1960-01-01 to 2027-12-31,
+        generated from sequence() -- no source table. date_key is the
+        yyyyMMdd integer.
+    columns:
+      - name: date_key
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_outcome
+    description: >
+        Reaction outcomes: the six E2B codes from the faers_outcome_codes
+        seed plus a '-1' / 'Not stated' default row. 10,411 reactions (1.8%)
+        carried no code as of 2026-08-23.
+    columns:
+      - name: outcome_key
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_drug
+    description: >
+        One row per normalized suspect-drug name. Names resolve through
+        openFDA harmonization (93.9% of reports) with the verbatim product
+        name as fallback; 'NO SUSPECT DRUG REPORTED' is the default row.
+        Attribution is first-listed suspect only -- no drugsfda crosswalk yet.
+    columns:
+      - name: drug_key
+        data_tests:
+          - unique
+          - not_null
+
+  - name: dim_reaction
+    description: One row per MedDRA reaction term as reported, upper-cased.
+    columns:
+      - name: reaction_key
+        data_tests:
+          - unique
+          - not_null
+
+  - name: fact_reactions
+    description: >
+        GRAIN: one reported reaction within one FAERS case report. Counting
+        deaths here overstates them roughly 4x -- a fatal report marks all its
+        reactions -- so death metrics must count distinct safety_report_id.
+    columns:
+      - name: reaction_event_key
+        data_tests:
+          - unique
+          - not_null
+      - name: receive_date_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+      - name: drug_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_drug')
+                field: drug_key
+      - name: outcome_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_outcome')
+                field: outcome_key
+      - name: reaction_key
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_reaction')
+                field: reaction_key
