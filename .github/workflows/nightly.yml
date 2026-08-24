@@ -1,0 +1,38 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "30 2 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    name: load and rebuild prod
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+      DBT_ENV_SECRET_DATABRICKS_TOKEN: ${{ secrets.DBT_ENV_SECRET_DATABRICKS_TOKEN }}
+      # databricks token read convention DATABRICKS_TOKEN
+      DATABRICKS_TOKEN: ${{ secrets.DBT_ENV_SECRET_DATABRICKS_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: astral-sh/setup-uv@v10.0.1
+        with:
+          enable-cache: true
+
+      - uses: databricks/setup-cli@main
+
+      - name: install from the lockfile
+        run: uv sync --locked
+
+      - name: pull ctgov since yesterday
+        run: make load-ctgov ARGS="--since $(date -u -d yesterday +%F)"
+
+      - name: dbt deps
+        run: uv run dbt deps
+
+      - name: rebuild prod
+        run: uv run dbt build --target prod

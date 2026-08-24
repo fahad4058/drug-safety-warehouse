@@ -18,4 +18,4 @@ inner join dev.analytics.dim_outcome as o on f.outcome_key = o.outcome_key
 where not f.is_probable_duplicate
 group by 1
 order by 2 desc
-limit 10;
+limit 20;
