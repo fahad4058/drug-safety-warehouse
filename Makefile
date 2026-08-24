@@ -21,7 +21,7 @@ load-all: load-ctgov load-faers load-drugsfda load-mesh
 # COPY INTO ignores it (PATTERN = '*.ndjson.gz'), but a landing zone should hold
 # only landing artifacts. load-mesh needs no guard: it copies a single named file.
 clean-junk:
-	find data -name .DS_Store -delete
+	if [ -d data ]; then find data -name .DS_Store -delete; fi
 
 load-ctgov: clean-junk
 	$(PY) src/loaders/ctgov.py $(ARGS)
