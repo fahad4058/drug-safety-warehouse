@@ -13,3 +13,6 @@ max_line_length = 120
 # that. Cannot be satisfied by correct struct-heavy staging SQL. RF02 still
 # enforces qualification in multi-table selects, which is the case that matters.
 exclude_rules = CP02, ST06, RF03
+
+[sqlfluff:templater:jinja]
+load_macros_from_path = macros
