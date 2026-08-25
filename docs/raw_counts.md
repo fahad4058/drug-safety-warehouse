@@ -97,3 +97,14 @@ Files land in the UC Volume `raw.landing.landing_files`, one subdirectory per
 source, before `COPY INTO` reads them. `data/mesh/desc2026.xml` (313 MB) is a
 cached parser input, deliberately **not** uploaded; only the 1.4 MB Parquet it
 produces is a landing artifact.
+
+## 2026-08-25 — FAERS completed to four full quarters
+
+`raw.landing.faers_event_ingest_v2` now holds every part of 2025q3–2026q2:
+129 files, **1,533,685 rows**, loaded in a single `COPY INTO` of 11 GB that
+ran 2m41s on the 2X-Small. **1,436,423 distinct `safetyreportid`** — the
+97,262 extra rows (6.3%) are later versions of cases that appear in more than
+one quarter's file, which the sampled load (3 of ~30 parts per quarter) was
+too thin to contain. Staging's version dedup, a measured no-op until this
+load, now collapses them. Part files are not random samples: sizes for the
+same 12,000 records range from 5 MB to 223 MB, clustered by position.
