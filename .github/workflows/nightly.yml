@@ -1,9 +1,13 @@
-name: nightly
+name: nightly refresh
 
 on:
   schedule:
-    - cron: "30 2 * * *"
+    - cron: "30 0 * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: prod-build
+  cancel-in-progress: true
 
 jobs:
   refresh:
@@ -34,5 +38,25 @@ jobs:
       - name: dbt deps
         run: uv run dbt deps
 
-      - name: rebuild prod
+      - name: source freshness
+        run: uv run dbt source freshness --target prod || true
+
+      - name: freshness summary
+        if: always()
+        run: |
+          if [ ! -f target/sources.json ]; then
+            echo "No freshness artifact -- the step above did not complete." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          {
+            echo "### Source freshness"
+            echo ""
+            echo "| source | state | hours since newest data |"
+            echo "|---|---|---:|"
+            jq -r '.results[]
+              | "| \(.unique_id | split(".") | .[-2:] | join(".")) | \(.status) | \((.max_loaded_at_time_ago_in_s // 0) / 3600 | floor) |"' \
+              target/sources.json
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: rebuild and test prod
         run: uv run dbt build --target prod

@@ -17,6 +17,7 @@ __pycache__/
 
 # internal
 internal/
+scripts/scratch_pad.sql
 
 # data
 data/
