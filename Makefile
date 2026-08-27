@@ -12,7 +12,7 @@
 VOLUME := dbfs:/Volumes/raw/landing/landing_files
 PY     := uv run python
 
-.PHONY: load-all load-ctgov load-faers load-drugsfda load-mesh raw-counts
+.PHONY: load-all load-ctgov load-faers load-drugsfda load-mesh
 
 load-all: load-ctgov load-faers load-drugsfda load-mesh
 
@@ -44,6 +44,3 @@ load-mesh:
 	$(PY) src/loaders/mesh.py $(ARGS)
 	databricks fs cp --overwrite data/mesh/mesh_descriptors.parquet $(VOLUME)/mesh/mesh_descriptors.parquet
 	$(PY) scripts/run_sql.py scripts/load_mesh.sql
-
-raw-counts:
-	$(PY) scripts/run_sql.py scripts/raw_counts.sql
