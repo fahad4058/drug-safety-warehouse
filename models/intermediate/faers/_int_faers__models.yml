@@ -12,9 +12,29 @@ models:
         data_tests:
           - unique
           - not_null
+      - name: drug_name_source
+        description: >
+            Which path resolved drug_name: openfda_generic, the verbatim
+            medicinalproduct, or none when the report lists no suspect drug.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['openfda_generic', 'medicinalproduct', 'none']
 
   - name: int_faers__reactions
     description: >
         The reactions array exploded to one row per reaction per report --
         the fan-out staging deliberately deferred.
         grain:  one row per reaction within a report — keyed by (safety_report_id, reaction_seq)
+    columns:
+      - name: outcome_code
+        description: >
+            E2B reaction outcome, coalesced to '-1' when the reaction reports
+            none. The seven values here are the six seeded codes plus that
+            default.
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['1', '2', '3', '4', '5', '6', '-1']

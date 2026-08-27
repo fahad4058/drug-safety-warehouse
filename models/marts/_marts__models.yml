@@ -14,9 +14,10 @@ models:
 
   - name: dim_outcome
     description: >
-        Reaction outcomes: the six E2B codes from the faers_outcome_codes
-        seed plus a '-1' / 'Not stated' default row. 10,411 reactions (1.8%)
-        carried no code as of 2026-08-23.
+        Reaction outcomes: the six E2B codes from the faers_outcome_codes seed
+        plus a '-1' / 'Not stated' default row, which int_faers__reactions
+        coalesces to when a reaction reports no outcome. Current share:
+        analyses/profile_faers.sql, reactions_no_outcome_code.
     columns:
       - name: outcome_key
         data_tests:
@@ -25,15 +26,22 @@ models:
 
   - name: dim_drug
     description: >
-        One row per normalized suspect-drug name. Names resolve through
-        openFDA harmonization (93.9% of reports) with the verbatim product
-        name as fallback; 'NO SUSPECT DRUG REPORTED' is the default row.
-        Attribution is first-listed suspect only -- no drugsfda crosswalk yet.
+        One row per normalized suspect-drug name. Names resolve through openFDA
+        harmonization where it exists, with the verbatim product name as
+        fallback and 'NO SUSPECT DRUG REPORTED' as the default row;
+        drug_name_source records which path each name took and
+        analyses/profile_faers.sql counts them. Attribution is first-listed
+        suspect only -- no drugsfda crosswalk yet.
     columns:
       - name: drug_key
         data_tests:
           - unique
           - not_null
+      - name: drug_name_source
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['openfda_generic', 'medicinalproduct', 'none']
 
   - name: dim_reaction
     description: One row per MedDRA reaction term as reported, upper-cased.
@@ -46,8 +54,9 @@ models:
   - name: fact_reactions
     description: >
         GRAIN: one reported reaction within one FAERS case report. Counting
-        deaths here overstates them roughly 4x -- a fatal report marks all its
-        reactions -- so death metrics must count distinct safety_report_id.
+        deaths here overstates them by the reactions-per-case rate -- a fatal
+        report marks all of its reactions -- so death metrics must count
+        distinct safety_report_id.
     columns:
       - name: reaction_event_key
         data_tests:

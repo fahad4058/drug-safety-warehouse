@@ -3,7 +3,9 @@ with landed as (
     select
         'ctgov' as source_name,
         count(*) as landed_rows,
-        count(distinct protocolSection.identificationModule.nctId) as distinct_keys
+        count(distinct protocolSection.identificationModule.nctId) as distinct_keys,
+        count(distinct _source_file) as source_files,
+        count(distinct _batch_id) as batches
     from {{ source('ctgov', 'studies') }}
 
     union all
@@ -11,7 +13,9 @@ with landed as (
     select
         'faers' as source_name,
         count(*) as landed_rows,
-        count(distinct safetyreportid) as distinct_keys
+        count(distinct safetyreportid) as distinct_keys,
+        count(distinct _source_file) as source_files,
+        count(distinct _batch_id) as batches
     from {{ source('faers', 'events') }}
 
     union all
@@ -19,7 +23,9 @@ with landed as (
     select
         'drugsfda' as source_name,
         count(*) as landed_rows,
-        count(distinct application_number) as distinct_keys
+        count(distinct application_number) as distinct_keys,
+        count(distinct _source_file) as source_files,
+        count(distinct _batch_id) as batches
     from {{ source('drugsfda', 'applications') }}
 
     union all
@@ -27,7 +33,9 @@ with landed as (
     select
         'mesh' as source_name,
         count(*) as landed_rows,
-        count(distinct descriptor_ui) as distinct_keys
+        count(distinct descriptor_ui) as distinct_keys,
+        count(distinct _source_file) as source_files,
+        count(distinct _batch_id) as batches
     from {{ source('mesh', 'descriptors') }}
 
 ),
@@ -68,7 +76,9 @@ select
     l.distinct_keys,
     s.staged_rows,
     l.landed_rows - s.staged_rows as rows_removed,
-    s.staged_rows - l.distinct_keys as grain_gap
+    s.staged_rows - l.distinct_keys as grain_gap,
+    l.source_files,
+    l.batches
 from landed as l
 inner join staged as s
     on l.source_name = s.source_name

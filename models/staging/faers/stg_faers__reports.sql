@@ -14,9 +14,9 @@ renamed as (
         authoritynumb as authority_number,
 
         -- the FDA's own duplicate flags, marking a case as a duplicate of a
-        -- DIFFERENT safetyreportid. non-null on 28,780 of 144,000 rows (20%).
-        -- carried through and never filtered here: excluding them is a mart
-        -- decision, and the QUALIFY below cannot catch them because the ids differ.
+        -- DIFFERENT safetyreportid. carried through and never filtered here:
+        -- excluding them is a mart decision, and the QUALIFY below cannot
+        -- catch them because the ids differ. share: analyses/profile_faers.sql
         duplicate,
         reportduplicate as report_duplicate,
 
@@ -58,8 +58,10 @@ renamed as (
         patient.drug as drugs,
         patient.reaction as reactions,
 
-        -- every row carries format code 102 (CCYYMMDD), measured across all
-        -- 144,000, so one format string covers all three date fields.
+        -- every row carries E2B format code 102 (CCYYMMDD), so one format
+        -- string covers all three date fields. the not_null tests on these
+        -- three columns are the guard: a load in another format parses to
+        -- null and fails them.
         try_to_date(receiptdate, 'yyyyMMdd') as receipt_date,
         try_to_date(receivedate, 'yyyyMMdd') as receive_date,
         try_to_date(transmissiondate, 'yyyyMMdd') as transmission_date,
