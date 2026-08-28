@@ -4,7 +4,7 @@ Every assumption this project makes about Databricks Free Edition, tested before
 being relied on. Failed probes are logged with their consequence, not silently
 dropped. Probe SQL lives in `scripts/probes/`, executed via `scripts/run_sql.py`.
 
-Workspace: `dbc-8f5f7a25-af7b.cloud.databricks.com` (AWS) · Warehouse: 2X-Small serverless `feaa277d26baa9cc`
+Workspace: Databricks Free Edition on AWS · Warehouse: 2X-Small serverless
 
 ## Toolchain pins (recorded 2026-08-09)
 
@@ -47,7 +47,8 @@ Workspace: `dbc-8f5f7a25-af7b.cloud.databricks.com` (AWS) · Warehouse: 2X-Small
   `DELTA_CLUSTERING_WITH_ZORDER_BY`.
 - **`OPTIMIZE` on a clustered table runs two passes** — a clustering pass, then a
   `post-optimize-compaction` pass — and returns one metrics row per pass. At probe
-  scale (1 file, 1.4 KB) all counters are zero; real measurements belong to.
+  scale (1 file, 1.4 KB) all counters are zero; a real measurement needs a table
+  with enough files to actually compact.
 - **`DESCRIBE DETAIL` is the layout receipt**: `partitionColumns` vs
   `clusteringColumns`, plus `tableFeatures` (`clustering`, `deletionVectors`,
   `rowTracking` all on by default here; parquet compression is zstd).

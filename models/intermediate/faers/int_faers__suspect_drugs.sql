@@ -24,21 +24,23 @@ select
     n_suspect_drugs,
 
     -- attribution = first-listed suspect (FAERS convention: primary suspect
-    -- first). 47% of reports carry 2+ suspects, so this is a simplification,
-    -- not a fact about the data; n_suspect_drugs keeps it visible.
-    -- one name per drug: multi-element generic_name arrays (12.2% of reports,
-    -- measured 2026-08-25) are overwhelmingly variant spellings of ONE
-    -- ingredient -- salt forms, dosage forms, typos, biosimilar suffixes --
-    -- not combination products. the plain ingredient name is almost always
-    -- the shortest variant, so: sort by length, ties alphabetical, take the
-    -- first. residual mis-picks (~215 reports: typos, brand names) are the
-    -- Step 4 crosswalk's job. name tiers: openfda 93.9%, verbatim 5.4%,
-    -- none 0.6%.
+    -- first). a large minority of reports carry two or more, so this is a
+    -- simplification, not a fact about the data; n_suspect_drugs keeps it
+    -- visible and analyses/profile_faers.sql counts it.
+    --
+    -- one name per drug: multi-element generic_name arrays are overwhelmingly
+    -- variant spellings of ONE ingredient -- salt forms, dosage forms, typos,
+    -- biosimilar suffixes -- not combination products. the plain ingredient
+    -- name is almost always the shortest variant, so: sort by length, ties
+    -- alphabetical, take the first. the residue that no sort can resolve --
+    -- typos and brand names -- waits on the Drugs@FDA crosswalk.
     --
     -- example: ["METHOTREXATE SODIUM", "METHOTREXATE", "METHOTREXATE INJECTION"]
     --   lengths: [20, 12, 22]
     --   sorted: ["METHOTREXATE", "METHOTREXATE SODIUM", "METHOTREXATE INJECTION"]
     --   result: "METHOTREXATE" (shortest, plain ingredient name)
+    --
+    -- tier shares: analyses/profile_faers.sql, drug_name_from_* metrics
     coalesce(
         nullif(upper(trim(try_element_at(
             array_sort(

@@ -4,14 +4,19 @@ Tested dbt warehouse on Databricks over FDA adverse-event, trial and approval da
 
 [![pr](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/pr.yml/badge.svg)](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/pr.yml)
 [![deploy](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/deploy.yml/badge.svg)](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/deploy.yml)
-[![nightly](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/nightly.yml/badge.svg)](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/nightly.yml)
+[![nightly refresh](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/nightly.yml/badge.svg)](https://github.com/fahad4058/drug-safety-warehouse/actions/workflows/nightly.yml)
 
-Four public sources — ClinicalTrials.gov, openFDA FAERS, Drugs@FDA and the NLM
-MeSH vocabulary — landed append-only into Unity Catalog, modelled in dbt as
-staging → intermediate → a Kimball star, tested at every layer, built into
-`dev`, `ci` and `prod` catalogs by GitHub Actions, and served as a native
-Databricks dashboard over one complete year of FDA adverse-event case reports.
-Every design decision is written up with the number that justified it.
+[![Adverse event outcomes dashboard](docs/adverse_event_outcomes.png)](docs/adverse_event_outcomes.pdf)
+
+Four public drug-safety sources — ClinicalTrials.gov, openFDA FAERS, Drugs@FDA
+and the NLM MeSH vocabulary — landed append-only into Unity Catalog, staged and
+tested in dbt with per-source freshness thresholds, and built into `dev`, `ci`
+and `prod` catalogs by GitHub Actions. **FAERS is carried the whole way**:
+arrays exploded in an intermediate layer, then a Kimball star and a native
+Databricks dashboard over one complete year of case reports. The other three
+stop at staging on purpose — joining them needs a drug-name crosswalk, which is
+the next piece of work. Every design decision is written up with the number
+that justified it.
 
 ## Table of Contents
 
@@ -40,40 +45,45 @@ answer — *which drugs are accumulating adverse-event reports, and what does th
 trial and approval pipeline around them look like?* — cannot be answered by
 counting rows. Each source breaks a naive count in its own way:
 
-| problem in the data | how this repo handles it | status |
-|---|---|---|
-| **FAERS case versioning inflates counts.** One case produces several report versions; count them all and every number is wrong by the amendment rate. | Staging keeps the newest version per `safetyreportid`, ordered by an integer-cast version so `'9'` never beats `'103'`. Across four quarters that collapses 97,262 rows (6.3%). | done |
-| **The grain explodes on contact.** Every report carries arrays of drugs and arrays of reactions. "Events per drug" is meaningless until a grain is declared. | Staging never explodes an array; the intermediate layer does, once. The fact is declared at one reaction within one report, and death metrics count reports, not rows. | done |
-| **Drug names are chaos.** Brands, generics, salt forms, dosage forms, typos. openFDA harmonizes only some of them. | The harmonized generic name where it exists (shortest spelling variant), the product name as reported otherwise — ~11% of cases. Brand-to-ingredient resolution via Drugs@FDA is next. | partial |
-| **ClinicalTrials.gov overwrites itself.** A trial's status flips and the history is gone at the source. | The raw layer is an append-only log; a daily pull keeps every version. Turning that log into slowly changing dimensions is next. | partial |
-| **Dates are dirty and reports arrive late.** ~40% of trial dates are month-precision; FDA receipt lags onset by years. | Parsed with a precision flag per date rather than silently nulled; late re-transmission is documented on the dashboard rather than hidden. | partial |
-| **Conditions only mean something through a hierarchy.** MeSH descriptors sit in several tree positions at once — a DAG, not a tree. | Tree numbers are carried whole in staging so deduplication precedes fan-out; traversal is next. | next |
+| problem in the data | how this repo handles it |
+|---|---|
+| **FAERS case versioning inflates counts.** One case produces several report versions; count them all and every number is wrong by the amendment rate. | Staging keeps the newest version per `safetyreportid`, ordered by an integer-cast version so `'9'` never beats `'103'`, so a republished quarter's revision replaces the original instead of double-counting. |
+| **The grain explodes on contact.** Every report carries arrays of drugs and arrays of reactions. "Events per drug" is meaningless until a grain is declared. | Staging never explodes an array; the intermediate layer does, once. The fact is declared at one reaction within one report, and death metrics count reports, not rows. |
+| **Drug names are chaos.** Brands, generics, salt forms, dosage forms, typos. openFDA harmonizes only some of them. | The harmonized generic name where it exists — the shortest of its spelling variants — and the product name as reported otherwise, with `drug_name_source` recording which path each name took. |
+| **ClinicalTrials.gov overwrites itself.** A trial's status flips and the history is gone at the source. | The raw layer is an append-only log and a nightly pull keeps every version, so the history the source discards accumulates here instead. |
+| **Dates are dirty and reports arrive late.** A large share of trial dates carry only month precision; FDA receipt lags onset by years. | Parsed with a precision flag per date rather than silently nulled, so the invented day stays recoverable; late re-transmission is documented on the dashboard rather than hidden. |
+| **Conditions only mean something through a hierarchy.** MeSH descriptors sit in several tree positions at once — a DAG, not a tree. | Tree numbers are carried whole in staging, so deduplication always precedes fan-out and a descriptor removed by a later MeSH edition cannot come back to life. |
 
 ### Sources
 
-| source | what it is | grain | publishing cadence | freshness warn / error |
-|---|---|---|---|---|
-| ClinicalTrials.gov API v2 | interventional oncology trials, phase 2/3 | one study per `nctId` | continuous; pulled nightly | 12h / 24h |
-| openFDA FAERS | adverse-event case reports, four complete quarters (Q3 2025 – Q2 2026) | one report per `safetyreportid` | quarterly, with late republication | 45d / 120d |
-| Drugs@FDA | approved applications, sponsors, products, ingredients | one application per `application_number` | bulk file, refreshed weekly | 14d / 30d |
-| MeSH | descriptor vocabulary with tree numbers | one descriptor per `descriptor_ui` | annual | opted out |
+| source | what it is | grain | publishing cadence | freshness warn / error | modelled to |
+|---|---|---|---|---|---|
+| ClinicalTrials.gov API v2 | interventional oncology trials, phase 2/3 | one study per `nctId` | continuous; pulled nightly | 12h / 24h | staging |
+| openFDA FAERS | adverse-event case reports, four complete quarters (Q3 2025 – Q2 2026) | one report per `safetyreportid` | quarterly, with late republication | 45d / 120d | **star** |
+| Drugs@FDA | approved applications, sponsors, products, ingredients | one application per `application_number` | bulk file, refreshed weekly | 14d / 30d | staging |
+| MeSH | descriptor vocabulary with tree numbers | one descriptor per `descriptor_ui` | annual | opted out | staging |
 
 Row counts are deliberately not listed here — they change with every pull.
-`analyses/staging_row_reconciliation.sql` recomputes them from the warehouse;
-dated readings live in [`docs/raw_counts.md`](docs/raw_counts.md) and
-warehouse capability probes in [`docs/verification.md`](docs/verification.md).
+The `analyses/` directory recomputes them from the warehouse:
+[`profile_faers`](analyses/profile_faers.sql),
+[`profile_mesh`](analyses/profile_mesh.sql),
+[`profile_drugsfda`](analyses/profile_drugsfda.sql) and
+[`staging_row_reconciliation`](analyses/staging_row_reconciliation.sql).
+Run any of them with `dbt show -s <name> --limit -1`. Warehouse capability
+probes are in [`docs/verification.md`](docs/verification.md).
 
 ## The product
 
 An adverse-event outcomes dashboard over one complete year of FDA case
 reports, served natively in Databricks on a Kimball star in the `prod`
 catalog. Every merge to `main` redeploys prod; a nightly job pulls new trial
-registrations and rebuilds it. The live dashboard requires registration in
-the Databricks account (the free tier has no public links);
-[`docs/adverse_event_outcomes.pdf`](docs/adverse_event_outcomes.pdf) is a
-full export.
+registrations, checks source freshness and rebuilds it. The live dashboard
+requires registration in the Databricks account — the free tier has no public
+links — so the image at the top of this page is the export; clicking it opens
+[the full-fidelity PDF](docs/adverse_event_outcomes.pdf).
 
-Measured 2026-08-25, four complete FAERS quarters (Q3 2025 – Q2 2026):
+Measured 2026-08-27 with `dbt show -s profile_faers --limit -1 --target prod`,
+four complete FAERS quarters (Q3 2025 – Q2 2026):
 1,533,685 raw rows collapse to **1,436,423 cases** and **4,638,022 reaction
 events** across 5,040 drugs and 16,849 reaction terms. With the FDA's
 probable-duplicate flag excluded, the dashboard shows 1.17M cases, 3.55M
@@ -84,38 +94,60 @@ excluded by default.
 
 ## Architecture
 
-```text
-  ClinicalTrials.gov       openFDA FAERS         Drugs@FDA            NLM MeSH
-  API v2, pulled daily     quarterly zip parts   bulk file            annual XML
-         |                        |                   |                   |
-         +------------------------+---------+---------+-------------------+
-                                            |
-                                            v
-                      src/loaders/*.py  -->  data/   ndjson.gz, parquet
-                                            |
-                                            |  databricks fs cp
-                                            v
-                      Volume   raw.landing.landing_files
-                                            |
-                                            |  COPY INTO   skips files already ingested
-                                            v
-                      raw.landing.*         append-only log: every pull kept, nothing overwritten
-                                            |
-                                            |  dbt build   into the dev, ci or prod catalog
-                                            v
-              +-----------------------------+------------------------------------+
-              |  staging        one row per source entity; arrays carried whole  |
-              |  intermediate   arrays exploded; one suspect drug per report     |
-              |  marts          fact_reactions + date, drug, outcome, reaction   |
-              +-----------------------------+------------------------------------+
-                                            |
-                                            v
-                      AI/BI dashboard on prod.analytics
+```mermaid
+flowchart TD
+    CT["ClinicalTrials.gov<br/>API v2 · pulled nightly"]
+    FA["openFDA FAERS<br/>quarterly zip parts"]
+    DF["Drugs@FDA<br/>bulk file"]
+    ME["NLM MeSH<br/>annual XML"]
+
+    LOAD["src/loaders/*.py<br/>ndjson.gz and parquet into data/"]
+    VOL[("UC Volume<br/>raw.landing.landing_files")]
+    RAW[("raw.landing.*<br/>append-only: every pull kept,<br/>nothing overwritten")]
+
+    CT --> LOAD
+    FA --> LOAD
+    DF --> LOAD
+    ME --> LOAD
+    LOAD -- "databricks fs cp" --> VOL
+    VOL -- "COPY INTO · skips files already ingested" --> RAW
+
+    RAW -- "dbt build into dev, ci or prod" --> SF["stg_faers__reports"]
+    RAW --> SC["stg_ctgov__studies"]
+    RAW --> SD["stg_drugsfda__applications"]
+    RAW --> SM["stg_mesh__descriptors"]
+
+    SF --> INT["int_faers__suspect_drugs<br/>int_faers__reactions<br/>arrays exploded, grain declared once"]
+    INT --> MART["fact_reactions<br/>dim_date · dim_drug · dim_outcome · dim_reaction"]
+    MART --> DASH(["AI/BI dashboard on prod.analytics"])
+
+    SC -.-> NEXT{{"next: drug-name crosswalk"}}
+    SD -.-> NEXT
+    SM -.-> NEXT
+
+    classDef src fill:#e9eff7,stroke:#5b7fa6,color:#16232f
+    classDef store fill:#f4efe3,stroke:#a28c5e,color:#2e2513
+    classDef model fill:#e6efe8,stroke:#5f8f6b,color:#182a1e
+    classDef star fill:#efe9f2,stroke:#8a6fa6,color:#26192e
+    classDef todo fill:#f7f1f1,stroke:#b08585,color:#33201f,stroke-dasharray:5 3
+
+    class CT,FA,DF,ME src
+    class LOAD,VOL,RAW store
+    class SC,SF,SD,SM,INT model
+    class MART,DASH star
+    class NEXT todo
 ```
+
+Solid arrows are what is built; the dotted ones are what the crosswalk will
+connect. Staging is where all four sources land and stop — only FAERS carries
+through to the star today.
 
 Every step is idempotent: the loaders skip output files that already exist,
 `COPY INTO` skips files it has already ingested, and dbt rebuilds are
-deterministic, so re-running any target is safe.
+deterministic, so re-running any target is safe. That claim is not assumed —
+[`docs/raw_layer.md`](docs/raw_layer.md) records the double-load experiment
+that establishes it, alongside how rows land and what each stamped column is
+for.
 
 ## Stack
 
@@ -146,15 +178,17 @@ deterministic, so re-running any target is safe.
 git clone https://github.com/fahad4058/drug-safety-warehouse.git
 cd drug-safety-warehouse
 uv sync                                   # installs the pinned toolchain from uv.lock
-cp .env.example .env 2>/dev/null || true  # then fill in the three values below
+cp .env.example .env                      # fill in the four values below
 source .env
 uv run dbt debug                          # confirms the connection
 pre-commit install                        # lint on commit, and block commits to main
 ```
 
-`.env` holds `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH` and
-`DBT_ENV_SECRET_DATABRICKS_TOKEN`. `profiles.yml` reads only those three
-environment variables, so the same file serves the laptop and CI.
+`.env` holds `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH` and the access token
+under two names — `DBT_ENV_SECRET_DATABRICKS_TOKEN` for dbt, which scrubs
+anything with that prefix from its logs, and `DATABRICKS_TOKEN` for the
+Databricks CLI. `profiles.yml` reads only the first three, so the same file
+serves the laptop and CI.
 
 ## Usage
 
@@ -162,7 +196,7 @@ environment variables, so the same file serves the laptop and CI.
 make load-all                              # all four sources; FAERS defaults to a 3-part sample per quarter
 make load-faers ARGS="--parts 40"          # every part of the two newest quarters (~3 GB each)
 make load-ctgov ARGS="--since 2026-01-01"  # loader flags go through ARGS
-make raw-counts                            # row counts straight from the warehouse
+uv run dbt show -s staging_row_reconciliation --limit -1   # landed vs staged, per source
 
 uv run dbt build                           # models, seeds and every test
 uv run dbt source freshness                # writes target/sources.json; non-zero exit on error
@@ -187,7 +221,7 @@ virtual environment, and a globally installed dbt is a different program.
 ```text
 src/loaders/          one Python puller per source, writing to data/
 scripts/              raw SQL sent straight to the warehouse: bootstrap,
-                      COPY INTO, rerunnable profiling and marts checks
+                      COPY INTO, one-time capability probes
 models/staging/       one folder per source — source declarations, staging
                       models, and their tests
 models/intermediate/  the fan-out staging defers: arrays exploded, one
@@ -195,16 +229,20 @@ models/intermediate/  the fan-out staging defers: arrays exploded, one
 models/marts/         the star: fact_reactions plus four dimensions
 macros/               surrogate_key()
 seeds/                reference data whose source of truth is this repo
-analyses/             SQL that dbt compiles but never runs
+analyses/             profiling and reconciliation SQL: compiled with ref()
+                      resolved, run on demand, never part of a build
 docs/                 dated measurements, capability probes, dashboard export
-.github/workflows/    pr (required check), deploy (CD), nightly (refresh)
+.github/workflows/    pr (required check), deploy (CD on merge), nightly
+                      refresh (cron: pull, freshness, rebuild)
 Makefile              the landing pipeline, one target per source
 ```
 
 Three directories hold `.sql` files and they are not interchangeable:
 `scripts/` is raw SQL with no dbt involvement — `{{ ref() }}` in there reaches
-the warehouse verbatim and fails; `models/` builds objects in the warehouse;
-`analyses/` is compiled and handed back, never executed.
+the warehouse verbatim and fails; `models/` builds objects in the warehouse on
+every run; `analyses/` is never built by `dbt run`, but `dbt show -s <name>`
+compiles and executes one on demand, which is where every measured number in
+this repo comes from.
 
 ## Data model
 
@@ -252,8 +290,8 @@ first-listed suspect, though many reports name more than one. A drug's name is
 openFDA's harmonized generic name where one exists — the shortest of its
 spelling variants, since multi-element name arrays are variants of one
 ingredient, not combination products — and otherwise the product name as the
-reporter wrote it, the case for about 11% of reports, so a brand and its
-generic can appear as separate rows until the Drugs@FDA crosswalk lands.
+reporter wrote it, so a brand and its generic can appear as separate rows
+until the Drugs@FDA crosswalk lands.
 Death metrics count distinct reports, never reaction rows: a fatal report
 marks all its reactions, so counting rows overstates deaths severalfold.
 
@@ -275,14 +313,16 @@ be collapsed into current state; current state can never be expanded back
 into a log.
 
 **The cost, stated plainly.** Storage: the same entity lands again on every
-pull that touches it — measured 2026-08-23, ClinicalTrials.gov holds 55,991
-rows behind 49,131 studies, 12.3% pure duplication and growing; FAERS carries
-97,262 follow-up versions across four quarters. And a permanent deduplication
-obligation on every consumer: a staging model that forgets over-counts
-silently, and the edges are sharp — FAERS `safetyreportversion` is a *string*,
-so an uncast `order by` sorts `'9' > '103'` and keeps the oldest revision
-while looking correct. Both costs are accepted: a raw layer you cannot replay
-is just a slow copy of the source.
+pull that touches it, and both ClinicalTrials.gov and FAERS carry a
+double-digit share of repeat rows —
+[`analyses/staging_row_reconciliation.sql`](analyses/staging_row_reconciliation.sql)
+prints `landed_rows`, `distinct_keys` and `rows_removed` per source, which is
+where that share is read rather than remembered. And a permanent
+deduplication obligation on every consumer: a staging model that forgets
+over-counts silently, and the edges are sharp — FAERS `safetyreportversion`
+is a *string*, so an uncast `order by` sorts `'9' > '103'` and keeps the
+oldest revision while looking correct. Both costs are accepted: a raw layer
+you cannot replay is just a slow copy of the source.
 
 ### Freshness thresholds follow publishing cadence, not a single rule
 
@@ -293,7 +333,16 @@ nothing and leaves `max(_loaded_at)` exactly where it was. Under a flat
 matter how well the pipeline ran. So freshness here measures **data
 recency**, not pipeline liveness, and each threshold matches how often that
 source actually publishes. MeSH, published once a year, opts out with an
-explicit `freshness: null`.
+explicit `freshness: null` — which *excludes* it from `dbt source freshness`
+rather than passing it.
+
+The nightly workflow runs the check after the load and writes the result into
+the run summary rather than failing on it. A source going stale is news about
+the publisher, not a broken pipeline: Drugs@FDA goes amber whenever openFDA is
+slow to republish, and gating on that would leave a red badge over a pipeline
+that is working. The check also has to run *after* the pull, because
+ClinicalTrials.gov's 24h error threshold and the cron's 24h period are the same
+number — measured before, a healthy run reports red every night.
 
 ### `unique` belongs on staging models, not on sources
 
@@ -304,7 +353,7 @@ case, the first Drugs@FDA re-pull, the next MeSH edition. A test that passes
 only because the system has not been exercised reads as coverage while
 asserting nothing. Sources carry `not_null` on natural keys and load metadata;
 `unique` sits on staging, where it verifies that deduplication actually
-worked — and on FAERS it now collapses 97,262 rows.
+worked — and on FAERS it now collapses real duplicate rows rather than none.
 
 ### CI builds for real, not `--empty`
 
@@ -322,13 +371,20 @@ reachable.
                                                 v  green
                                           merge to main --> [deploy]   dbt build --target prod
 
-  cron 02:30 UTC ----------------------------------------> [nightly]  make load-ctgov + dbt build --target prod
+  cron 00:30 UTC ----------------------------------------> [nightly refresh]  load ctgov + source freshness + dbt build --target prod
 ```
 
+`deploy` and `nightly refresh` run the same `dbt build --target prod` for
+different reasons — one because the code changed, one because the data did —
+so they share a concurrency group; two builds of the same catalog would clobber
+each other. The asymmetry is deliberate: a merge queues behind a running pull
+and never cancels it, because a superseded deploy costs nothing while a
+cancelled pull loses that day's ClinicalTrials.gov window for good.
+
 ```sh
-uv run sqlfluff lint models analyses                        # databricks dialect, jinja templater
-uv run dbt build                                            # models, seeds, and every test
-uv run python scripts/run_sql.py scripts/marts_checks.sql   # prod marts spot checks
+uv run sqlfluff lint models analyses          # databricks dialect, jinja templater
+uv run dbt build                              # models, seeds, and every test
+uv run dbt show -s profile_faers --limit -1   # the numbers behind the prose
 ```
 
 CI always parses from scratch, so its test count is authoritative when it
@@ -341,17 +397,19 @@ design-decision notes above come from.
 
 ## Roadmap
 
-- Snapshots over the staging views, so dimensions gain history instead of
-  being overwritten — the daily pulls have been accumulating change since
-  August 2026 for exactly this.
-- Entity resolution between trials, approvals and adverse events, including
-  the Drugs@FDA brand-to-ingredient crosswalk for the ~11% of cases openFDA
-  leaves unharmonized.
-- A multivalued bridge for reports with several suspect drugs; MeSH hierarchy
-  traversal for condition roll-ups.
-- Incremental and microbatch materialisations for the fact, an uploader that
-  skips files already in the Volume, Airflow orchestration, hosted dbt docs,
-  and a public path to the live dashboard.
+- **Snapshots over the staging views**, so ClinicalTrials.gov dimensions gain
+  history instead of being overwritten. The nightly pulls have been
+  accumulating genuine change since August 2026 for exactly this.
+- **Entity resolution across drug names** — the crosswalk that connects
+  Drugs@FDA and MeSH to the FAERS star, plus a multivalued bridge for reports
+  naming several suspect drugs. The blocking measurement is already done:
+  openFDA's harmonization block is null on a majority of Drugs@FDA
+  applications ([`analyses/profile_drugsfda.sql`](analyses/profile_drugsfda.sql)),
+  so normalized-name matching has to be the primary path, not the fallback.
+
+## Maintainer
+
+Fahad Maqsood — [@fahad4058](https://github.com/fahad4058)
 
 
 ## Contributing
@@ -369,3 +427,7 @@ engineering portfolio, not pharmacovigilance inference: FAERS records what
 was *reported*, voluntarily and unevenly; disproportionate report counts are
 not causal safety signals, nothing here measures the risk of any drug, and
 nothing here is medical advice.
+
+## License
+
+[MIT](LICENSE) © 2026 Fahad Maqsood
