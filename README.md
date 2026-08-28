@@ -208,9 +208,9 @@ ends with the line worth reading — the node count is the signal that every
 test was found and run:
 
 ```text
-Found 11 models, 1 analysis, 1 seed, 46 data tests, 4 sources, 733 macros
+Found 11 models, 4 analyses, 54 data tests, 1 seed, 4 sources, 733 macros
 ...
-Done. PASS=58 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=58
+Done. PASS=66 WARN=0 ERROR=0 SKIP=0 NO-OP=0 TOTAL=66
 ```
 
 Use `uv run dbt`, never bare `dbt` — the pinned dbt-core lives in the project's
