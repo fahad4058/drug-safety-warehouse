@@ -19,6 +19,7 @@ jobs:
       DBT_ENV_SECRET_DATABRICKS_TOKEN: ${{ secrets.DBT_ENV_SECRET_DATABRICKS_TOKEN }}
       # databricks token read convention DATABRICKS_TOKEN
       DATABRICKS_TOKEN: ${{ secrets.DBT_ENV_SECRET_DATABRICKS_TOKEN }}
+      DATABRICKS_WAREHOUSE_ID: ${{ secrets.DATABRICKS_WAREHOUSE_ID }}
 
     steps:
       - uses: actions/checkout@v7
@@ -28,6 +29,9 @@ jobs:
           enable-cache: true
 
       - uses: databricks/setup-cli@main
+
+      - name: wake the warehouse
+        run: databricks warehouses start "$DATABRICKS_WAREHOUSE_ID" --timeout 20m
 
       - name: install from the lockfile
         run: uv sync --locked
